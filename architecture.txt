@@ -1,0 +1,111 @@
+THREE-LANE MODEL HARNESS
+========================
+
+Context
+-------
+
+                         +-------------------+
+                         |      CALLER       |
+                         +---------+---------+
+                                   |
+                                   | task + explicit complexity
+                                   | sensitive metadata
+                                   v
+                         +-------------------+
+                         |      HARNESS      |
+                         |      Router       |
+                         +---------+---------+
+                                   |
+                                   | selected provider + model
+                                   v
+                         +-------------------+
+                         | PROVIDER REGISTRY |
+                         +---------+---------+
+                                   |
+                          +--------+--------+
+                          |                 |
+                          v                 v
+                    +-----------+      +-----------+
+                    |   MOCK    |      |  OLLAMA   |
+                    | provider  |      | provider  |
+                    +-----------+      +-----+-----+
+                                             |
+                                             | HTTP POST /api/generate
+                                             v
+                                       +-----------+
+                                       |   MODEL   |
+                                       |  SERVICE  |
+                                       +-----------+
+
+
+Routing
+-------
+
+                           REQUEST
+                              |
+                              v
+                    +-------------------+
+                    | explicit class?   |
+                    +---------+---------+
+                              |
+                 +------------+------------+
+                 |            |            |
+                 v            v            v
+             +--------+   +----------+   +---------+
+             | SIMPLE |   | STANDARD |   | COMPLEX |
+             +---+----+   +----+-----+   +----+----+
+                 |             |              |
+                 v             v              v
+             Config.Simple Config.Standard Config.Complex
+                 |             |              |
+                 +-------------+--------------+
+                               |
+                               v
+                       provider registry
+                               |
+                               v
+                       Provider.Generate
+
+
+Request flow
+------------
+
+REQUEST
+  |
+  v
+VALIDATE TASK
+  |
+  +-- empty --------------------> FAILED TRACE
+  |
+  v
+MAP COMPLEXITY TO LANE
+  |
+  +-- invalid ------------------> FAILED TRACE
+  |
+  v
+VALIDATE PROVIDER + MODEL
+  |
+  +-- incomplete ---------------> FAILED TRACE
+  |
+  v
+LOOK UP PROVIDER
+  |
+  +-- missing ------------------> FAILED TRACE
+  |
+  v
+PROVIDER.GENERATE(ctx, model, task)
+  |
+  +-- error / timeout ----------> FAILED TRACE
+  |
+  v
+OUTPUT + SUCCESS TRACE
+
+
+Boundary
+--------
+
+The caller classifies. The harness routes.
+
+Sensitive=true is metadata only. This repository does not implement
+classification, security enforcement, prompt filtering, retry/failover,
+or autonomous model selection.
