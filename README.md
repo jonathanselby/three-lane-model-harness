@@ -40,7 +40,8 @@ The design is deliberately boring. That is the point.
 - minimal traceability;
 - a local deterministic provider;
 - an Ollama-compatible provider;
-- product intent (`PRD.md`) -> design (`EDD.md`) -> implementation -> tests.
+- product intent (`PRD.md`) -> design (`EDD.md`) -> implementation -> tests;
+- architecture recovery by `codebase-to-edd` and comparison with the intended design.
 
 ## What it does not do
 
@@ -92,7 +93,7 @@ It does not contain:
                  +------+            +--------+
 ```
 
-See [`EDD.md`](EDD.md) for the design and boundaries.
+See [`EDD.md`](EDD.md) for the intended design and [`architecture.txt`](architecture.txt) for the standalone plain-text diagrams.
 
 ## Run it
 
@@ -136,6 +137,8 @@ go run ./cmd/harness \
   -prompt "Compare these two architecture proposals and explain the trade-offs."
 ```
 
+Verified mock runs for all three lanes are captured in [`examples/mock-runs.md`](examples/mock-runs.md).
+
 ## Use Ollama
 
 Any lane can be pointed at the Ollama provider without changing caller behaviour.
@@ -172,7 +175,7 @@ The model names above are examples. The harness does not decide whether those mo
 go test ./...
 ```
 
-The tests cover all three lanes plus invalid classification, missing providers, provider failures, empty input, duplicate registration and Ollama HTTP behaviour.
+The tests cover all three lanes plus invalid classification, missing providers, provider failures, empty input, duplicate registration and Ollama HTTP behaviour. GitHub Actions runs the same test command on pushes and pull requests to `main`.
 
 ## Trace
 
@@ -200,8 +203,12 @@ three-lane-model-harness/
 ├── README.md
 ├── PRD.md
 ├── EDD.md
+├── architecture.txt
 ├── LICENSE
 ├── go.mod
+├── .github/
+│   └── workflows/
+│       └── test.yml
 ├── cmd/
 │   └── harness/
 │       └── main.go
@@ -220,14 +227,17 @@ three-lane-model-harness/
 ├── examples/
 │   └── mock-runs.md
 └── generated/
-    └── EDD.md
+    ├── EDD.md
+    └── COMPARISON.md
 ```
 
 ## Design cross-check
 
 This repository is also a reference test for [`codebase-to-edd`](https://github.com/jonathanselby/codebase-to-edd).
 
-`EDD.md` is the hand-written intended design. `generated/EDD.md` is produced by inspecting the implementation as an unfamiliar codebase. Comparing them tests what design intent can actually be recovered from code.
+[`EDD.md`](EDD.md) is the hand-written intended design. [`generated/EDD.md`](generated/EDD.md) was produced by inspecting the implementation as an unfamiliar codebase while deliberately excluding the hand-written EDD and PRD from its evidence basis.
+
+[`generated/COMPARISON.md`](generated/COMPARISON.md) compares them. The runtime architecture is recovered cleanly; the material gaps are design rationale and future intent, which are exactly the information that should remain in the PRD/EDD rather than be invented from code.
 
 ## Licence
 
