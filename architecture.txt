@@ -1,5 +1,14 @@
-THREE-LANE MODEL HARNESS
-========================
+THREE-LANE MODEL HARNESS — V0.2
+===============================
+
+Purpose
+-------
+
+V0.1 proved the routing pattern with mock + Ollama.
+V0.2 proves the same caller/router contract across local and managed enterprise AI platforms.
+
+The caller classifies. The harness routes.
+
 
 Context
 -------
@@ -22,20 +31,41 @@ Context
                          | PROVIDER REGISTRY |
                          +---------+---------+
                                    |
-                          +--------+--------+
-                          |                 |
-                          v                 v
-                    +-----------+      +-----------+
-                    |   MOCK    |      |  OLLAMA   |
-                    | provider  |      | provider  |
-                    +-----------+      +-----+-----+
-                                             |
-                                             | HTTP POST /api/generate
-                                             v
-                                       +-----------+
-                                       |   MODEL   |
-                                       |  SERVICE  |
-                                       +-----------+
+          +-------------+----------+----------+-------------+
+          |             |          |          |             |
+          v             v          v          v             v
+      +--------+    +--------+  +--------+ +--------+   +--------+
+      |  MOCK  |    | OLLAMA |  | AZURE  | |BEDROCK |   | VERTEX |
+      +--------+    +----+---+  +---+----+ +---+----+   +---+----+
+                        |          |          |            |
+                        | HTTP     | HTTPS    | HTTPS      | HTTPS
+                        v          v          v            v
+                   local/self-   Microsoft   Amazon       Google
+                   hosted model  Foundry /   Bedrock      Vertex AI
+                                 Azure OpenAI
+
+
+Provider boundary
+-----------------
+
+                    +-----------------------+
+                    |      ROUTER           |
+                    +-----------+-----------+
+                                |
+                                | Provider.Generate(ctx, model, prompt)
+                                v
+                    +-----------------------+
+                    |   PROVIDER CONTRACT   |
+                    +-----------+-----------+
+                                |
+             +------------------+------------------+
+             |                  |                  |
+             v                  v                  v
+       provider-specific  provider-specific  provider-specific
+       endpoint/auth      request schema      response schema
+
+The router does not know whether a request is local, Azure, AWS or GCP.
+Provider-specific transport remains behind one stable interface.
 
 
 Routing
@@ -67,6 +97,26 @@ Routing
                        Provider.Generate
 
 
+Credential boundary
+-------------------
+
+Secrets are not command-line flags.
+
+AZURE_OPENAI_API_KEY / AZURE_OPENAI_BEARER_TOKEN
+AWS_BEARER_TOKEN_BEDROCK
+GOOGLE_OAUTH_ACCESS_TOKEN
+             |
+             | environment
+             v
+      provider adapter only
+             |
+             v
+      managed cloud endpoint
+
+Credential acquisition, refresh, workload identity and secret storage remain
+outside the harness and belong to the deployment environment.
+
+
 Request flow
 ------------
 
@@ -95,17 +145,18 @@ LOOK UP PROVIDER
   v
 PROVIDER.GENERATE(ctx, model, task)
   |
-  +-- error / timeout ----------> FAILED TRACE
+  +-- configuration/auth error -> FAILED TRACE
+  +-- HTTP error / timeout -----> FAILED TRACE
+  +-- malformed response -------> FAILED TRACE
   |
   v
-OUTPUT + SUCCESS TRACE
+OUTPUT + TOKEN COUNTS + SUCCESS TRACE
 
 
 Boundary
 --------
 
-The caller classifies. The harness routes.
+Sensitive=true remains metadata only.
 
-Sensitive=true is metadata only. This repository does not implement
-classification, security enforcement, prompt filtering, retry/failover,
-or autonomous model selection.
+V0.2 does not implement classification, security enforcement, prompt filtering,
+credential lifecycle, retry/failover, autonomous model selection or agent orchestration.
