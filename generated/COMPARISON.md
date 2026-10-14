@@ -1,76 +1,74 @@
-# Hand-written vs generated EDD
+# Hand-Written vs Generated EDD — V0.2
 
-This comparison checks whether the intended design in [`../EDD.md`](../EDD.md) can be recovered from the implementation alone.
+## Purpose
 
-The generated EDD analysed commit `4fd03c3697703b7b0dff94d6f1c1cd99be5f186d` and deliberately excluded the hand-written EDD and PRD from its evidence basis.
+This comparison tests whether the V0.2 implementation still communicates the architecture intended by the hand-written `EDD.md` after adding Microsoft Foundry / Azure OpenAI, Amazon Bedrock and Google Vertex AI.
 
-## Summary
+The generated EDD was produced from implementation/tests/runtime material without using the hand-written `EDD.md` or `PRD.md` as architecture evidence.
 
-The generated EDD recovered the material runtime architecture correctly:
+## Result
 
-- caller-supplied complexity;
-- direct three-lane routing;
-- provider registry and interface;
-- mock and Ollama providers;
-- CLI configuration;
-- request/trace contracts;
-- timeout propagation;
-- explicit failure paths;
-- no persistence;
-- no retry/failover;
-- `Sensitive` as metadata rather than enforcement.
+**Pass.**
 
-The cross-check therefore supports the main claim of the repository: the implementation reflects the written design closely enough that an unfamiliar-code analysis can reconstruct the important engineering model.
+The material runtime architecture is recoverable from code and remains aligned with the intended design.
+
+Most importantly, V0.2 did not require changes to the routing core. The enterprise platforms were added behind the existing provider contract.
 
 ## Comparison
 
 | Design area | Hand-written EDD | Generated EDD | Assessment |
 |---|---|---|---|
-| core boundary | caller classifies; harness routes | recovered directly from request type and `laneFor` | MATCH |
-| lane model | simple / standard / complex | recovered exactly | MATCH |
-| provider abstraction | common `Provider` interface | recovered exactly | MATCH |
-| providers | mock + Ollama | recovered exactly | MATCH |
-| configuration | CLI flags per lane | recovered exactly | MATCH |
-| trace model | request/provider/model/timing/success/tokens | recovered exactly | MATCH |
-| sensitivity | metadata only; no enforcement | recovered from types, router and tests | MATCH |
-| persistence | none | no durable store found | MATCH |
-| retries/failover | deliberately absent | none found | MATCH |
-| security boundary | routing harness, not security control | absence of filtering/policy and configurable outbound endpoint recovered | MATCH |
-| deployment intent | small executable harness | inferred from CLI lifecycle | PARTIAL — intent inferred, not encoded as a formal constraint |
-| business classification rules | out of scope | cannot be recovered because they are absent | MATCH / EXPECTED UNKNOWN |
-| future provider/auth strategy | not defined | open question | EXPECTED UNKNOWN |
+| caller owns classification | explicit design rule | recovered directly from `Request.Complexity` and lane lookup | MATCH |
+| three fixed lanes | explicit | recovered from `Config` and `laneFor` | MATCH |
+| provider abstraction | explicit | recovered from `Provider` interface and registry | MATCH |
+| provider-neutral router | explicit | no provider-specific branching found in `Router.Run` | MATCH |
+| mock provider | intentional local/test implementation | recovered | MATCH |
+| Ollama provider | local/self-hosted adapter | recovered | MATCH |
+| Azure provider | managed Microsoft adapter | recovered from HTTP path/auth/payload | MATCH |
+| Bedrock provider | managed AWS adapter | recovered from Converse path/auth/payload | MATCH |
+| Vertex provider | managed Google adapter | recovered from generateContent path/auth/payload | MATCH |
+| environment credential boundary | explicit V0.2 design | recovered from CLI/provider construction | MATCH |
+| credentials not CLI flags | explicit | recovered from flag definitions and `os.Getenv` | MATCH |
+| timeout propagation | explicit | recovered from CLI context and provider HTTP requests | MATCH |
+| failure is explicit | explicit | recovered across router/provider error paths | MATCH |
+| retries/failover absent | deliberate non-goal | no implementation found | MATCH |
+| `Sensitive` is metadata only | explicit | no branch uses it for routing/enforcement | MATCH |
+| persistent telemetry absent | explicit | no store/sink implementation found | MATCH |
 
-## What the generated EDD cannot recover reliably
+## What code communicates well
 
-Some design intent exists only in product/design documentation and should remain there:
+V0.2 makes several important design properties observable without reading the design document:
 
-1. **Why three lanes were chosen.** Code proves three lanes exist; it cannot establish the organisational reasoning for choosing exactly three.
-2. **Why automatic classification is excluded.** Its absence is observable, but the implementation alone cannot prove whether that is a deliberate product boundary or unfinished work.
-3. **Why retries and failover are excluded.** Again, absence is factual; intent requires the hand-written design.
-4. **Portfolio/product purpose.** Code can show a small CLI harness but cannot establish why it exists as an engineering demonstration.
+1. **Cloud growth does not alter routing.** `Router.Run` still knows only provider names/models and the common interface.
+2. **Platform-specific complexity stays at the edge.** URLs, auth headers and JSON shapes are confined to provider packages.
+3. **The caller remains authoritative for workload class.** No provider or router attempts to infer complexity.
+4. **Credentials are deployment inputs.** Managed provider adapters receive resolved credentials; the core does not acquire or refresh them.
+5. **Failure is visible.** Missing credentials, non-2xx responses and malformed output are returned rather than silently retried or failed over.
 
-That is a useful result rather than a defect. The implementation should reveal runtime truth; the PRD/EDD should preserve intent and boundaries that code alone cannot prove.
+## What implementation cannot explain by itself
 
-## Cross-test conclusion
+The generated EDD correctly marks several things as unknown/inferred rather than inventing rationale:
 
-**PASS.**
+- why there are exactly three lanes;
+- why the V0.2 production platforms are Azure, Bedrock and Vertex rather than direct OpenAI/Anthropic APIs;
+- why standard-library HTTP was preferred to cloud SDKs;
+- whether mixed-cloud lane configuration is expected in production or merely possible;
+- future policy for retries, streaming, failover and credential providers.
 
-The generated EDD recovered the material implementation architecture without access to the intended design. The main differences are correctly limited to design rationale and future intent — information that should not be invented from code.
+Those belong in the PRD/hand-written EDD because they are product and architecture intent rather than executable behaviour.
 
-This is the desired relationship:
+## V0.2 architectural finding
+
+The strongest result from this cross-check is that V0.2 expanded **horizontally at the provider edge** rather than **vertically through the core**.
 
 ```text
-PRD
- |
- v
-HAND-WRITTEN EDD ---- intent / boundaries
- |
- v
-IMPLEMENTATION ------ runtime truth
- |
- v
-CODEBASE-TO-EDD ----- recovered runtime model
- |
- v
-COMPARE ------------- drift / missing intent / hidden behaviour
+V0.1
+CALLER -> ROUTER -> Provider -> mock / ollama
+
+V0.2
+CALLER -> ROUTER -> Provider -> mock / ollama / azure / bedrock / vertex
 ```
+
+The left side of the architecture did not change.
+
+That is the behaviour the repository was intended to demonstrate.
