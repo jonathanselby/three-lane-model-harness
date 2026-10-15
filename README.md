@@ -1,5 +1,7 @@
 # Three-Lane Model Harness
 
+[![test](https://github.com/jonathanselby/three-lane-model-harness/actions/workflows/test.yml/badge.svg)](https://github.com/jonathanselby/three-lane-model-harness/actions/workflows/test.yml)
+
 **Current version: 0.2.0**
 
 A deliberately small Go harness for routing explicitly classified AI work across simple, standard and complex model lanes.
@@ -82,7 +84,7 @@ The managed-cloud adapters use standard-library HTTP rather than pulling cloud S
 
 ## Run locally
 
-Requires Go 1.23+.
+Requires Go 1.26+.
 
 The defaults use the mock provider, so no API key or model server is required.
 
